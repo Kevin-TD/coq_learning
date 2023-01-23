@@ -26,7 +26,7 @@ Proof.
      + simpl. rewrite -> IHn'. reflexivity.
     Qed.
 
-Lemma double_plus : forall n, 
+Theorem double_plus : forall n, 
     double n = n + n. 
 Proof. 
     intros n. induction n as [| n' IHn'].

@@ -42,7 +42,35 @@ Proof.
   Qed. 
 
 
+Lemma n_plus_0_eq_n : forall n : nat, 
+  n + 0 = n. 
+Proof. 
+  intros n. induction n as [| n' IHn'].
+  - reflexivity.
+  - simpl. rewrite -> IHn'. reflexivity.
+  Qed. 
 
+Lemma btn_b_plus_0 : forall b : bin, 
+  bin_to_nat b + 0 = bin_to_nat b.
+Proof.
+  intros b. induction b as [| b' | b'].
+  - reflexivity.
+  - rewrite -> n_plus_0_eq_n. reflexivity.
+  - rewrite -> n_plus_0_eq_n. reflexivity.
+  Qed.
+
+Lemma plus_n_Sm : forall n m : nat, 
+    S (n + m) = n + (S m). 
+Proof. 
+    intros n. induction n as [| n' IHn']. 
+    (* S(0 + m) = 0 + S m *)
+    - simpl. reflexivity. 
+
+    (* S(S n' + m) = S n' + S m *)
+    - induction m as [| m' IHm'].
+     + simpl. rewrite -> IHn'. reflexivity. 
+     + simpl. rewrite -> IHn'. reflexivity.
+    Qed.
 
 Theorem bin_to_nat_pres_incr : forall b : bin,
   bin_to_nat (incr b) = 1 + bin_to_nat b.
@@ -50,4 +78,5 @@ Proof.
     intros b. induction b as [| b' | b'].
     - reflexivity.
     - reflexivity.
-    - rewrite -> btn_b1_b. simpl. rewrite -> IHb'. simpl.
+    - rewrite -> btn_b1_b. simpl. rewrite -> IHb'. simpl. rewrite -> btn_b_plus_0. rewrite <-plus_n_Sm. reflexivity.
+    Qed. 
