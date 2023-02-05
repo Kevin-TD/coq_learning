@@ -1,14 +1,6 @@
 Definition doit3times {X : Type} (f : X -> X) (n : X) : X :=
   f (f (f n)).
 
-Fixpoint repeat (X:Type) (x:X) (n:nat) : list X :=
-  match n with
-  | O => nil X
-  | S n' => cons X x (repeat X x n')
-  end.
-
-
-
 (* The following exercises explore an alternative way of defining natural numbers using the Church numerals, which are named after their inventor, the mathematician Alonzo Church. We can represent a natural number n as a function that takes a function f as a parameter and returns f iterated n times. *)
 
 Definition cnat := forall X : Type, (X -> X) -> X -> X.
@@ -79,4 +71,37 @@ Fixpoint repeat_apply {X:Type} (f : X -> X) (x:X) (n:nat) : X :=
 
 (* exercise *)
 Definition plus (n m : cnat) : cnat :=
-    fun (X : Type) (f : X -> X) (x : X) => 
+    fun (X : Type) (f : X -> X) (x : X) => n X f (m X f x).
+
+Example plus_1 : plus zero one = one.
+Proof. reflexivity. Qed.
+Example plus_2 : plus two three = plus three two.
+Proof. reflexivity. Qed.
+Example plus_3 :
+  plus (plus two two) three = plus one (plus three three).
+  Proof. reflexivity. Qed.
+
+(* exercise *)
+Definition mult (n m : cnat) : cnat :=
+  fun (X : Type) (f : X -> X) (x : X) => m X (n X f) x.
+
+Example mult_1 : mult one one = one.
+Proof. reflexivity. Qed.
+Example mult_2 : mult zero (plus three three) = zero.
+Proof. reflexivity. Qed.
+Example mult_3 : mult two three = plus three three.
+Proof. reflexivity. Qed.
+
+(* exercise *)
+Definition exp (n m : cnat) : cnat :=
+  fun(X: Type) => m (X -> X) (n X).
+(* i looked this one up since i couldn't quite figure it out & i did not have a lot of time to keep working on it but i do not quite understand what is going on here *)
+  
+Example exp_1 : exp two two = plus two two.
+Proof. reflexivity. Qed.
+
+Example exp_2 : exp three zero = one.
+Proof. reflexivity. Qed.
+
+Example exp_3 : exp three two = plus (mult two (mult two two)) one.
+Proof. reflexivity. Qed.
