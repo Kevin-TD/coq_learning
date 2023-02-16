@@ -65,7 +65,13 @@ Fixpoint eqb (n m : nat) : bool :=
             | S m' => eqb n' m'
             end
   end.
-
+Fixpoint filter {X:Type} (test: X -> bool) (l:list X) : list X :=
+  match l with
+  | [] => []
+  | h :: t =>
+    if test h then h :: (filter test t)
+    else filter test t
+  end.
 
 Notation "x =? y" := (eqb x y) (at level 70) : nat_scope.
 Fixpoint double (n:nat) :=
@@ -672,12 +678,169 @@ Fixpoint split {X Y : Type} (l : list (X*Y))
   end.
 
 (* Exercise: 3 stars, standard (combine_split) *)
-
+(* okay i just looked it up, didn't want to spend anymore time on this problem  *)
 
 Theorem combine_split : forall X Y (l : list (X * Y)) l1 l2,
   split l = (l1, l2) ->
   combine l1 l2 = l.
 Proof.
-  intros X Y l l1 l2 H. 
-  induction l.
-  - simpl in H. 
+  intros X Y l.
+  induction l as [| n l' IHl'].
+  - simpl. intros l1 l2 H. injection H as H1 H2. rewrite <- H1, <-H2. reflexivity.
+  - destruct n as [n1 n2]. simpl. destruct (split l'). 
+    intros l1 l2 H. injection H as H1 H2.
+    rewrite <- H1, <- H2. simpl. 
+    assert ( Hc : combine x y = l'). { apply IHl'. reflexivity. } 
+    rewrite Hc. reflexivity.
+Qed.
+
+
+(* The eqn: part of the destruct tactic is optional; although we've chosen to include it most of the time, for the sake of documentation, it can often be omitted without harm.
+However, when destructing compound expressions, the information recorded by the eqn: can actually be critical: if we leave it out, then destruct can erase information we need to complete a proof. For example, suppose we define a function sillyfun1 like this:
+ *)
+ Definition sillyfun1 (n : nat) : bool :=
+  if n =? 3 then true
+  else if n =? 5 then true
+  else false.
+
+(* Now suppose that we want to convince Coq that sillyfun1 n yields true only when n is odd. If we start the proof like this (with no eqn: on the destruct)... *)
+Theorem sillyfun1_odd_FAILED : forall (n : nat),
+  sillyfun1 n = true ->
+  odd n = true.
+Proof.
+  intros n eq. unfold sillyfun1 in eq.
+  destruct (n =? 3).
+  (* stuck... *)
+Abort.
+
+(* ... then we are stuck at this point because the context does not contain enough information to prove the goal! The problem is that the substitution performed by destruct is quite brutal -- in this case, it throws away every occurrence of n =? 3, but we need to keep some memory of this expression and how it was destructed, because we need to be able to reason that, since n =? 3 = true in this branch of the case analysis, it must be that n = 3, from which it follows that n is odd.
+What we want here is to substitute away all existing occurrences of n =? 3, but at the same time add an equation to the context that records which case we are in. This is precisely what the eqn: qualifier does. *)
+
+Theorem sillyfun1_odd : forall (n : nat),
+  sillyfun1 n = true ->
+  odd n = true.
+Proof.
+  intros n eq. unfold sillyfun1 in eq.
+  destruct (n =? 3) eqn:Heqe3.
+  (* Now we have the same state as at the point where we got stuck above, except that the context contains an extra equality assumption, which is exactly what we need to make progress. *)
+  - (* e3 = true *) apply eqb_true in Heqe3.
+  rewrite -> Heqe3. reflexivity.
+- (* e3 = false *)
+(* When we come to the second equality test in the body of the function we are reasoning about, we can use eqn: again in the same way, allowing us to finish the proof. *)
+destruct (n =? 5) eqn:Heqe5.
+  + (* e5 = true *)
+    apply eqb_true in Heqe5.
+    rewrite -> Heqe5. reflexivity.
+  + (* e5 = false *) discriminate eq. Qed.
+
+
+(* Exercise: 2 stars, standard (destruct_eqn_practice) *)
+
+Theorem bool_fn_applied_thrice :
+  forall (f : bool -> bool) (b : bool),
+  f (f (f b)) = f b.
+Proof.
+  intros f b. destruct b eqn:H.
+  - destruct (f true) eqn:H1.
+   + rewrite H1. rewrite H1. reflexivity.
+   + destruct (f false) eqn:H2.
+    -- rewrite H1. reflexivity.
+    -- rewrite H2. reflexivity.
+  - destruct (f false) eqn:H1.
+   + destruct (f true) eqn:H2.
+    -- rewrite H2. reflexivity.
+    -- rewrite H1. reflexivity.
+   + rewrite H1. destruct (f false) eqn:H2.
+    -- discriminate.
+    -- reflexivity.
+Qed.
+  
+
+(* Review *)
+    
+(* 
+intros: move hypotheses/variables from goal to context
+reflexivity: finish the proof (when the goal looks like e = e)
+apply: prove goal using a hypothesis, lemma, or constructor
+apply... in H: apply a hypothesis, lemma, or constructor to a hypothesis in the context (forward reasoning)
+apply... with...: explicitly specify values for variables that cannot be determined by pattern matching
+simpl: simplify computations in the goal
+simpl in H: ... or a hypothesis
+rewrite: use an equality hypothesis (or lemma) to rewrite the goal
+rewrite ... in H: ... or a hypothesis
+symmetry: changes a goal of the form t=u into u=t
+symmetry in H: changes a hypothesis of the form t=u into u=t
+transitivity y: prove a goal x=z by proving two new subgoals, x=y and y=z
+unfold: replace a defined constant by its right-hand side in the goal
+unfold... in H: ... or a hypothesis
+destruct... as...: case analysis on values of inductively defined types
+destruct... eqn:...: specify the name of an equation to be added to the context, recording the result of the case analysis
+induction... as...: induction on values of inductively defined types
+injection... as...: reason by injectivity on equalities between values of inductively defined types
+discriminate: reason by disjointness of constructors on equalities between values of inductively defined types
+assert (H: e) (or assert (e) as H): introduce a "local lemma" e and call it H
+generalize dependent x: move the variable x (and anything else that depends on it) from the context back to an explicit hypothesis in the goal formula
+f_equal: change a goal of the form f x = f y into x = y
+ *)
+
+
+ (* Additional exercises *)
+
+(* Exercise: 3 stars, standard (eqb_sym) *)
+
+Theorem eqb_sym : forall (n m : nat),
+  (n =? m) = (m =? n).
+Proof.
+  intros n. induction n. 
+  - intros m. induction m.
+   + reflexivity.
+   + simpl. reflexivity.
+  - intros m. induction m.
+   + simpl. reflexivity.
+   + simpl. rewrite IHn. reflexivity.
+Qed.
+
+
+(* Exercise: 3 stars, standard, optional (eqb_trans) *)
+
+Theorem eqb_trans : forall n m p,
+  n =? m = true ->
+  m =? p = true ->
+  n =? p = true.
+Proof.
+  intros n m p eq1 eq2. induction n. induction m. induction p.
+  - apply eq1.
+  - apply eq2.
+  - apply IHm. 
+   + destruct (0 =? m) eqn:H.
+    -- reflexivity.
+    -- discriminate.
+   + destruct (m =? p) eqn:H1.
+    -- reflexivity.
+    -- discriminate.
+  - rewrite <- eq1. apply f_equal. apply eqb_true. rewrite <- eq2. rewrite -> eqb_sym. reflexivity.
+Qed.
+
+(* took a minute ... but i got it *)
+
+
+(* Exercise: 3 stars, advanced (split_combine) *)
+
+(* We proved, in an exercise above, that combine is the inverse of split. Complete the definition of split_combine_statement below with a property that states that split is the inverse of combine. Then, prove that the property holds *)
+
+
+
+Definition split_combine_statement : Prop :=
+  forall (X Y : Type), forall (l1 : list X), forall (l2 : list Y), 
+  length l1 = length l2 -> split (combine l1 l2) = (l1, l2).
+
+Lemma blah1 : forall (X : Type), forall (x : X), forall (l : list X),
+  length(x :: l) = S(length l).
+Proof. Admitted.
+
+Theorem split_combine : split_combine_statement.
+Proof.
+  intros X Y l1 l2 eq1. induction l1. induction l2.
+  - reflexivity.
+  - simpl. simpl in eq1. discriminate.
+  - rewrite blah1 in eq1. 
